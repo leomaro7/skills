@@ -1,128 +1,114 @@
 ---
 name: pre-commit-scrubber
 description: >-
-  Scan pending changes for secrets/credentials, PII, and organization- or
-  project-specific names BEFORE committing, then apply human-approved fixes and
-  commit cleanly. Use whenever the user asks to commit, check in, or push code
-  to GitHub/GitLab — especially for reusable artifacts shared across projects —
-  or asks to "check for secrets/PII/leaks" or "scrub" files before committing.
-  Runs before `git add` so secrets never enter git history. Cross-platform
-  (macOS/Windows), human-in-the-loop required before any fix.
+  コミット前に、変更内容へ混入したシークレット/クレデンシャル・PII・組織や案件固有の名前をスキャンし、人間が承認した修正だけを適用してからクリーンにコミットする。ユーザーがコミット・チェックイン・GitHub/GitLab へのプッシュをしようとしているとき（特に複数プロジェクトで共有する再利用アーティファクトのとき）、あるいは「secrets/PII/leak をチェックして」「scrub して」と頼まれたときに使う。`git add` の前に走るのでシークレットが git 履歴に入らない。クロスプラットフォーム（macOS/Windows）対応で、いかなる修正の前にも人間の承認（human-in-the-loop）が必須。
 ---
 
 # Pre-commit Scrubber
 
-Gate commits of shared artifacts so they never leak secrets, PII, or
-org/project-specific names. The flow is **detect → human review → fix → add →
-commit** (one commit), and it runs **before `git add`** so nothing sensitive
-enters git history.
+共有アーティファクトのコミットをゲートし、シークレット・PII・組織/案件固有の名前が決して漏れないようにする。フローは **detect → human review → fix → add → commit**（1コミット）で、**`git add` の前**に走るため、機微な情報が git 履歴に入ることはない。
 
-## When this runs
+## 発火タイミング
 
-Trigger when the user is about to commit/push, or explicitly asks to scrub or
-check for secrets/PII/leaks. Run the scan **before staging** the changes.
+ユーザーがコミット/プッシュしようとしているとき、または明示的に scrub や secrets/PII/leak のチェックを依頼したときにトリガーする。スキャンは変更を
+**ステージする前**に実行する。
 
-## Workflow
+## ワークフロー
 
-### 1. Detect (read-only)
+### 1. 検出（読み取り専用）
 
-Run the scanner against the repository. It works on macOS and Windows and uses
-only the Python standard library. Use `python3` (fall back to `python` on
-Windows if `python3` is unavailable):
+リポジトリに対してスキャナーを実行する。
+macOS と Windows で動作し、Python 標準ライブラリのみを使う。`python3` を使う（Windows で `python3` が無ければ `python`にフォールバック）：
 
 ```
 python3 scripts/scan.py --repo <repo-path>
 ```
 
-The scanner:
-- inspects **uncommitted changes** (modified + untracked eligible files) vs
-  `HEAD`, before staging;
-- detects **SECRET** (gitleaks if installed, else built-in regex), **PII**
-  (email/phone/IP/credit-card with Luhn check), and **NAME** (terms in
-  `<repo>/.scrub-glossary`);
-- **never edits files** — it only reports, so the human stays in control.
+スキャナーの挙動：
+- ステージ前の **未コミットの変更**（変更済み + 対象となる未追跡ファイル）を
+  `HEAD` と比較して検査する。
+- **SECRET**（gitleaks があればそれ、無ければ内蔵の正規表現）、**PII**
+  （email/phone/IP/クレジットカード（Luhn チェック付き））、**NAME**
+  （`<repo>/.scrub-glossary` に登録された語）を検出する。
+- **ファイルを一切編集しない** — 報告のみを行い、判断は人間に委ねる。
 
-Add `--format json` when you need structured output to drive edits. Exit code is
-`1` when there are findings, `0` when clean.
+修正を駆動するために構造化出力が必要なときは `--format json` を付ける。終了コードは
+検出ありで `1`、クリーンで `0`。
 
-If `.scrub-glossary` does not exist, copy `assets/scrub-glossary.template` to the
-repo root, help the user fill in their client/project/internal names, then
-re-run. The glossary only catches **registered** terms; unregistered names are
-covered by the manual NAME pass in step 1b.
+`.scrub-glossary` が存在しない場合は `assets/scrub-glossary.template` をリポジトリ
+ルートにコピーし、ユーザーの取引先/案件/社内固有の名前を埋めるのを手伝ってから
+再実行する。グロッサリは**登録済み**の語しか拾えない。未登録の名前はステップ 1b の
+手動 NAME パスでカバーする。
 
-### 1b. Manual NAME pass (mandatory — also covers files the scanner cleared)
+### 1b. 手動 NAME パス（必須 — スキャナーがクリア判定したファイルも対象）
 
-The scanner's "clean"/zero-findings result is only reliable for **SECRET** and
-**PII**, which are matched by deterministic regex. For **NAME** it sees *only*
-terms registered in `.scrub-glossary`, so a file the scanner reported with **no
-findings can still contain an unregistered org/project-specific name**. This is a
-structural blind spot, not an edge case.
+スキャナーの「クリーン」/検出ゼロという結果が信頼できるのは、決定的な正規表現で
+マッチする **SECRET** と **PII** だけ。**NAME** についてはスキャナーは
+`.scrub-glossary` に登録された語*しか*見えないため、スキャナーが**検出なしと報告した
+ファイルにも、未登録の組織/案件固有の名前が残っている可能性がある**。これは
+エッジケースではなく構造的な死角である。
 
-Therefore, **regardless of scanner output**, read through **every** changed file
-yourself — including the ones the scanner cleared — and look for unregistered
-names: client/customer names, internal project or product codenames, team or
-system names, internal hostnames, repo names, ticket prefixes. Get the full list
-of changed files from the scanner's `--format json` output (`scanned_files`) or
-from `git status --porcelain`.
+したがって、**スキャナーの出力に関わらず**、スキャナーがクリア判定したものも含めて
+**すべての**変更ファイルを自分で読み通し、未登録の名前を探す：取引先/顧客名、社内の
+案件・製品コードネーム、チーム名やシステム名、社内ホスト名、リポジトリ名、チケット
+接頭辞など。変更ファイルの全リストは、スキャナーの `--format json` 出力
+（`scanned_files`）または `git status --porcelain` から取得する。
 
-Treat anything you find as a candidate **NAME** finding, carry it into the human
-review below alongside the scanner's findings, and add each confirmed name to
-`.scrub-glossary` so future runs catch it automatically. Do **not** skip this
-pass just because the scanner returned no findings — that is precisely the case
-it cannot cover.
+見つけたものは候補 **NAME** 検出として扱い、下記の human review にスキャナーの検出と
+並べて持ち込み、確定した名前はそれぞれ `.scrub-glossary` に追加して以降の実行で
+自動的に拾われるようにする。スキャナーが検出ゼロを返したからといってこのパスを
+**スキップしない** — そこがまさにスキャナーがカバーできないケースである。
 
-### 2. Human review (mandatory checkpoint)
+### 2. Human review（必須チェックポイント）
 
-Never auto-fix. Present findings grouped by file and category, and for each ask
-the human to choose: **fix** (and with what replacement), **reject** (false
-positive), or **defer**. Make the secret risk explicit:
+決して自動修正しない。検出をファイル別・カテゴリ別にまとめて提示し、各項目について
+人間に選択してもらう：**fix**（どの置換にするか）、**reject**（誤検出）、**defer**
+（保留）。シークレットのリスクは明示する：
 
-> A real credential cannot be made safe by text replacement alone — it must be
-> rotated/revoked at its source.
+> 実在のクレデンシャルはテキスト置換だけでは安全にできない — 発行元で
+> ローテーション/失効させなければならない。
 
-Surface false-positive-prone items (phone, IP) clearly so they can be rejected
-quickly.
+誤検出になりやすい項目（phone・IP）は素早く reject できるよう明確に示す。
 
-### 3. Apply approved fixes
+### 3. 承認された修正の適用
 
-Apply only what the human approved, using the `Edit` tool:
-- **NAME**: replace with the glossary `REPLACEMENT`, or a neutral generic agreed
-  with the human. Add newly confirmed names to `.scrub-glossary`.
-- **PII**: replace with reserved/documentation placeholders.
-- **SECRET**: replace the value with an env-var reference or placeholder, move
-  the real value to a git-ignored `.env`/secret store, and **tell the user to
-  rotate the credential**.
+人間が承認したものだけを `Edit` ツールで適用する：
+- **NAME**：グロッサリの `REPLACEMENT`、または人間と合意した中立的な汎用語に置換する。
+  新たに確定した名前は `.scrub-glossary` に追加する。
+- **PII**：予約済み/ドキュメント用のプレースホルダに置換する。
+- **SECRET**：値を env 変数参照またはプレースホルダに置換し、実在の値を git 管理外の
+  `.env`/シークレットストアに移し、**ユーザーにクレデンシャルのローテーションを伝える**。
 
-For replacement conventions, history-rewrite cautions, and the full secret
-remediation procedure, read `references/remediation.md`.
+置換の規約、履歴書き換えの注意、シークレットの完全な是正手順については
+`references/remediation.md` を読む。
 
-### 4. Re-scan, then add and commit
+### 4. 再スキャンしてから add してコミット
 
-Re-run `scripts/scan.py` to confirm approved findings are gone. When clean (or
-only rejected false positives remain), stage and commit in one step:
+`scripts/scan.py` を再実行し、承認した検出が消えたことを確認する。クリーン（または
+reject した誤検出だけが残っている状態）になったら、1ステップで stage してコミットする：
 
 ```
 git add <files>
 git commit -m "<type>: <summary>"
 ```
 
-Because fixes were made before staging, this produces a single clean commit.
+修正はステージ前に行われているため、これで単一のクリーンなコミットになる。
 
-**Commit message convention (Conventional Commits):** Start the subject with a
-type, then a concise imperative summary: `<type>: <summary>`. Allowed types:
-`feat` (new feature/artifact), `fix`, `docs`, `refactor`, `chore`, `test`,
-`build`, `ci`, `perf`, `style`. Do **not** use `add:` — use `feat:`. Example:
-`feat: add reusable error-handling helper`. Keep the summary short (~50 chars)
-and in the imperative mood. Do not add a `Co-Authored-By` trailer here — the
-environment appends one automatically when required; avoid duplicating it.
+**コミットメッセージ規約（Conventional Commits）：** subject はまず type で始め、続けて
+簡潔な命令形のサマリを書く：`<type>: <summary>`。許可される type：`feat`（新機能/
+新アーティファクト）、`fix`、`docs`、`refactor`、`chore`、`test`、`build`、`ci`、
+`perf`、`style`。`add:` は**使わない** — `feat:` を使う。例：
+`feat: add reusable error-handling helper`。サマリは短く（~50 文字）命令形に保つ。
+ここで `Co-Authored-By` トレーラーは付けない — 必要なときは環境が自動で付加するため、
+重複させないこと。
 
-## Important constraints
+## 重要な制約
 
-- **Run before `git add`**, not before push — fixing after a local commit leaves
-  secrets in history.
-- **Human approval is required before any edit.** This skill detects
-  automatically but never redacts automatically.
-- **Real secrets require rotation**, not just replacement. Do not let the commit
-  proceed until the user confirms rotation is done or consciously deferred.
-- **Cross-platform**: invoke the scanner via Python (`python3`/`python`); do not
-  rely on `grep`/`sed`/bash. gitleaks is optional and auto-detected.
+- **`git add` の前に実行する**。プッシュ前ではない — ローカルコミットの後に修正しても
+  シークレットは履歴に残る。
+- **いかなる編集の前にも人間の承認が必須。** このスキルは自動で検出するが、決して
+  自動でリダクトしない。
+- **実在のシークレットは置換ではなくローテーションが必要。** ユーザーが
+  ローテーション完了、または意図的な保留を確認するまでコミットを進めさせない。
+- **クロスプラットフォーム**：スキャナーは Python（`python3`/`python`）経由で呼ぶ。
+  `grep`/`sed`/bash に依存しない。gitleaks は任意で、自動検出される。

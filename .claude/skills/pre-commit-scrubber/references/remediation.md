@@ -1,86 +1,85 @@
-# Remediation reference
+# 是正リファレンス
 
-Detailed guidance for handling findings after the human review. Read this when
-deciding *how* to fix each category, especially for real secrets.
+human review の後、各検出を*どう*処理するかの詳細ガイド。各カテゴリの修正方法、
+特に実在のシークレットの扱いを決めるときに読む。
 
-## Table of contents
-- [Decision matrix per category](#decision-matrix-per-category)
-- [Real secrets: rotation is mandatory](#real-secrets-rotation-is-mandatory)
-- [If the secret is already committed locally](#if-the-secret-is-already-committed-locally)
-- [Replacement conventions](#replacement-conventions)
-- [Tuning false positives](#tuning-false-positives)
-- [Installing gitleaks (optional)](#installing-gitleaks-optional)
+## 目次
+- [カテゴリ別の判断マトリクス](#カテゴリ別の判断マトリクス)
+- [実在のシークレット：ローテーションは必須](#実在のシークレットローテーションは必須)
+- [シークレットが既にローカルでコミット済みの場合](#シークレットが既にローカルでコミット済みの場合)
+- [置換の規約](#置換の規約)
+- [誤検出のチューニング](#誤検出のチューニング)
+- [gitleaks のインストール（任意）](#gitleaks-のインストール任意)
 
-## Decision matrix per category
+## カテゴリ別の判断マトリクス
 
-| Category | Default action after approval |
+| カテゴリ | 承認後のデフォルト対応 |
 |---|---|
-| `SECRET` (real credential) | Remove value, replace with env-var reference or placeholder, **and rotate the credential**. See below. |
-| `SECRET` (false positive, e.g. sample value) | Mark as accepted, no change. Consider tightening the value or adding a placeholder form. |
-| `PII` (email/phone/IP/card) | Replace with a generic placeholder (`user@example.com`, `000-0000-0000`, `203.0.113.10`, `4111...`). For test fixtures, prefer reserved/documentation ranges. |
-| `NAME` (glossary or LLM-suggested) | Replace with the glossary `REPLACEMENT`, or a neutral generic chosen with the human. Add newly confirmed names to `.scrub-glossary`. |
+| `SECRET`（実在のクレデンシャル） | 値を削除し、env 変数参照またはプレースホルダに置換し、**かつクレデンシャルをローテーションする**。下記参照。 |
+| `SECRET`（誤検出。例：サンプル値） | accepted としてマークし、変更しない。値をより厳密にするか、プレースホルダ形式の採用を検討する。 |
+| `PII`（email/phone/IP/カード） | 汎用プレースホルダ（`user@example.com`、`000-0000-0000`、`203.0.113.10`、`4111...`）に置換する。テストフィクスチャでは予約済み/ドキュメント用レンジを優先する。 |
+| `NAME`（グロッサリまたは LLM 提案） | グロッサリの `REPLACEMENT`、または人間と決めた中立的な汎用語に置換する。新たに確定した名前は `.scrub-glossary` に追加する。 |
 
-## Real secrets: rotation is mandatory
+## 実在のシークレット：ローテーションは必須
 
-Text-replacing a leaked credential does **not** make it safe — anyone who saw it
-(including earlier local commits, terminal history, backups) can still use it.
+漏れたクレデンシャルをテキスト置換しても安全には**ならない** — それを見た者
+（過去のローカルコミット、ターミナル履歴、バックアップを含む）は依然として使える。
 
-When a real secret is confirmed, tell the human explicitly:
+実在のシークレットが確定したら、人間に明示的に伝える：
 
-1. **Rotate/revoke** the credential at its source (cloud console, token settings).
-2. Replace the value in the file with an environment-variable reference
-   (`API_KEY=${API_KEY}`) or a documented placeholder.
-3. Move the real value to a secret store / `.env` file that is git-ignored.
-4. Verify `.gitignore` covers the secret-bearing file.
+1. クレデンシャルを発行元（クラウドコンソール、トークン設定）で**ローテーション/失効**させる。
+2. ファイル内の値を環境変数参照（`API_KEY=${API_KEY}`）または文書化された
+   プレースホルダに置換する。
+3. 実在の値を、git 管理外のシークレットストア / `.env` ファイルに移す。
+4. `.gitignore` がそのシークレットを含むファイルをカバーしていることを確認する。
 
-Do not proceed to commit until the human confirms rotation is done or
-consciously deferred.
+人間がローテーション完了、または意図的な保留を確認するまでコミットに進まない。
 
-## If the secret is already committed locally
+## シークレットが既にローカルでコミット済みの場合
 
-The scanner runs **before** `git add`, so the goal is to never let the secret
-enter a commit. But if earlier local commits (not yet pushed) already contain
-it, text replacement leaves it in history. Options, in order of preference:
+スキャナーは `git add` の**前**に走るので、目標はシークレットをそもそもコミットに
+入れないこと。ただし、まだプッシュされていない過去のローカルコミットに既に含まれて
+いる場合、テキスト置換では履歴に残る。優先順の選択肢：
 
-- If commits are **not pushed**: rewrite local history (`git rebase`, or
-  `git reset --soft` back to before the leak and recommit cleanly).
-- Regardless: **rotate the secret** — history rewriting alone is not enough.
-- If already pushed: rotate immediately; treat as a disclosed secret.
+- コミットが**未プッシュ**の場合：ローカル履歴を書き換える（`git rebase`、または
+  リーク前まで `git reset --soft` で戻してクリーンにコミットし直す）。
+- いずれにせよ：**シークレットをローテーションする** — 履歴の書き換えだけでは不十分。
+- 既にプッシュ済みの場合：直ちにローテーションし、開示済みのシークレットとして扱う。
 
-History rewriting is destructive — always confirm with the human and never
-force-push without explicit approval.
+履歴の書き換えは破壊的 — 必ず人間に確認し、明示的な承認なしに force-push しない。
 
-## Replacement conventions
+## 置換の規約
 
-Prefer well-known reserved/documentation values so fixtures stay realistic but
-safe:
+フィクスチャを現実的かつ安全に保つため、よく知られた予約済み/ドキュメント用の値を
+優先する：
 
-- Email: `user@example.com` (RFC 2606 reserved domain)
-- IPv4: `192.0.2.x`, `198.51.100.x`, `203.0.113.x` (RFC 5737 doc ranges)
-- Phone (JP): `03-0000-0000`; (US/intl) `+1-555-0100`
-- Credit card: `4111 1111 1111 1111` is a known test number (acceptable in tests)
-- Secrets in config: `${VAR_NAME}` env reference
+- Email：`user@example.com`（RFC 2606 予約ドメイン）
+- IPv4：`192.0.2.x`、`198.51.100.x`、`203.0.113.x`（RFC 5737 ドキュメント用レンジ）
+- 電話（JP）：`03-0000-0000`、（US/intl）`+1-555-0100`
+- クレジットカード：`4111 1111 1111 1111` は公知のテスト番号（テストでは許容）
+- 設定内のシークレット：`${VAR_NAME}` env 参照
 
-## Tuning false positives
+## 誤検出のチューニング
 
-The scanner errs toward over-reporting so the human review can reject noise.
+スキャナーは過剰報告寄りに振っており、human review でノイズを reject できるように
+してある。
 
-- **Placeholder values** (`xxxx`, `<token>`, `${VAR}`, `changeme`, `example`)
-  are already filtered for the generic `key = value` rule.
-- The **phone** and **IP** detectors are the noisiest. If a repo has many
-  version numbers or IDs that look like phone numbers, expect false positives;
-  reject them in review rather than weakening the pattern globally.
-- To stop a recurring legitimate string from being flagged, the cleanest fix is
-  to make the value an obvious placeholder, not to disable the rule.
+- **プレースホルダ値**（`xxxx`、`<token>`、`${VAR}`、`changeme`、`example`）は、
+  汎用の `key = value` ルールで既にフィルタ済み。
+- **phone** と **IP** の検出器が最もノイジー。リポジトリに電話番号のように見える
+  バージョン番号や ID が多い場合、誤検出を見込む。パターンを全体的に弱めるのではなく
+  review で reject する。
+- 正当な文字列が繰り返しフラグされるのを止める最もクリーンな方法は、ルールを無効化
+  するのではなく、その値を明らかなプレースホルダにすること。
 
-## Installing gitleaks (optional)
+## gitleaks のインストール（任意）
 
-The scanner works without gitleaks (regex fallback). Installing it improves
-secret coverage. Cross-platform install:
+スキャナーは gitleaks なしでも動作する（正規表現のフォールバック）。インストールすると
+シークレットの網羅性が上がる。クロスプラットフォームのインストール：
 
-- macOS: `brew install gitleaks`
-- Windows: `winget install gitleaks` or `choco install gitleaks`
-- Any OS: download a release binary from the gitleaks GitHub releases page and
-  put it on `PATH`.
+- macOS：`brew install gitleaks`
+- Windows：`winget install gitleaks` または `choco install gitleaks`
+- 任意の OS：gitleaks の GitHub releases ページからリリースバイナリをダウンロードし、
+  `PATH` に置く。
 
-The scanner auto-detects gitleaks on `PATH`; no configuration needed.
+スキャナーは `PATH` 上の gitleaks を自動検出する。設定は不要。

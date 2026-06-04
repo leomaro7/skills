@@ -1,18 +1,18 @@
 #!/usr/bin/env python3
-"""Detect secrets, PII, and organization/project-specific names in pending changes.
+"""変更内容からシークレット・PII・組織/案件固有の名前を検出する。
 
-Detection-only: this script NEVER edits files. It reports findings so a human can
-review them before Claude applies fixes. Works on macOS and Windows (standard
-library only; no bash/grep/sed dependency).
+検出専用：このスクリプトはファイルを決して編集しない。Claude が修正を適用する前に
+人間が review できるよう、検出結果を報告するだけ。macOS と Windows で動作する
+（標準ライブラリのみ。bash/grep/sed に依存しない）。
 
-Usage:
+使い方:
     python scan.py [--repo PATH] [--glossary PATH] [--format text|json]
                    [--staged] [--no-untracked]
 
-Exit codes:
-    0  no findings
-    1  findings present (review required)
-    2  usage / environment error
+終了コード:
+    0  検出なし
+    1  検出あり（review が必要）
+    2  使い方 / 環境エラー
 """
 from __future__ import annotations
 
@@ -25,16 +25,16 @@ import sys
 import tempfile
 from pathlib import Path
 
-# Files we never scan (binary / vendored / lockfiles tend to be noise).
+# スキャンしないファイル（バイナリ / vendored / ロックファイルはノイズになりがち）。
 SKIP_SUFFIXES = {
     ".png", ".jpg", ".jpeg", ".gif", ".bmp", ".ico", ".webp", ".svg",
     ".pdf", ".zip", ".gz", ".tar", ".7z", ".rar", ".jar", ".class",
     ".woff", ".woff2", ".ttf", ".eot", ".otf", ".mp3", ".mp4", ".mov",
     ".so", ".dylib", ".dll", ".exe", ".bin", ".wasm",
 }
-MAX_BYTES = 2_000_000  # skip files larger than ~2 MB
+MAX_BYTES = 2_000_000  # 約 2 MB を超えるファイルはスキップ
 
-# Obvious placeholders that should NOT be flagged as real secrets.
+# 実在のシークレットとしてフラグすべきでない明白なプレースホルダ。
 PLACEHOLDER_RE = re.compile(
     r"^(?:x+|\*+|\.+|-+|none|null|nil|todo|changeme|example|sample|dummy|test|"
     r"your[_-]?\w+|<[^>]+>|\$\{[^}]+\}|\{\{[^}]+\}\}|%[a-z_]+%|env(?:iron)?\."
@@ -42,7 +42,7 @@ PLACEHOLDER_RE = re.compile(
     re.IGNORECASE,
 )
 
-# --- Secret patterns (high confidence) ---------------------------------------
+# --- シークレットのパターン（高信頼度） --------------------------------------
 SECRET_PATTERNS = [
     ("private-key-block", re.compile(r"-----BEGIN (?:[A-Z]+ )?PRIVATE KEY-----")),
     ("aws-access-key-id", re.compile(r"\b(?:AKIA|ASIA)[0-9A-Z]{16}\b")),
@@ -57,17 +57,17 @@ SECRET_PATTERNS = [
     ("jwt", re.compile(r"\beyJ[A-Za-z0-9_-]{10,}\.eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\b")),
 ]
 
-# Generic "key = value" assignment of a credential. Value captured to filter placeholders.
+# 汎用の "key = value" 形式によるクレデンシャル代入。プレースホルダ除外のため値をキャプチャ。
 ASSIGNMENT_RE = re.compile(
     r"(?i)\b(password|passwd|pwd|secret|token|api[_-]?key|access[_-]?key|"
     r"client[_-]?secret|auth[_-]?token|private[_-]?key|credential)s?\b"
     r"\s*[:=]\s*[\"']?([^\s\"',;]{6,})[\"']?"
 )
 
-# --- PII patterns ------------------------------------------------------------
+# --- PII のパターン ----------------------------------------------------------
 EMAIL_RE = re.compile(r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b")
 IPV4_RE = re.compile(r"\b(?:\d{1,3}\.){3}\d{1,3}\b")
-# Phone: international or JP-style separated digits (kept conservative).
+# 電話：国際形式または JP 形式の区切り付き数字（控えめに設定）。
 PHONE_RE = re.compile(r"(?<!\d)(?:\+\d{1,3}[-\s]?)?(?:\(?0\d{1,4}\)?[-\s]?)\d{1,4}[-\s]?\d{3,4}(?!\d)")
 CREDIT_CARD_RE = re.compile(r"\b(?:\d[ -]?){13,16}\b")
 
@@ -121,7 +121,7 @@ def candidate_files(repo: Path, staged_only: bool, include_untracked: bool,
     for name in sorted(names):
         p = repo / name
         if exclude_resolved and p.resolve() == exclude_resolved:
-            continue  # never scan the glossary file itself
+            continue  # グロッサリファイル自体は決してスキャンしない
         if p.suffix.lower() in SKIP_SUFFIXES:
             continue
         try:
@@ -134,7 +134,7 @@ def candidate_files(repo: Path, staged_only: bool, include_untracked: bool,
 
 
 def load_glossary(path: Path) -> list[tuple[re.Pattern, str, str]]:
-    """Each non-comment line: `term` or `term => replacement`."""
+    """コメント以外の各行：`term` または `term => replacement`。"""
     entries = []
     if not path.is_file():
         return entries
@@ -153,7 +153,7 @@ def load_glossary(path: Path) -> list[tuple[re.Pattern, str, str]]:
 
 
 def gitleaks_findings(repo: Path, changed: set[str]) -> list[dict]:
-    """Augment secret detection with gitleaks if it is installed."""
+    """gitleaks がインストールされていれば、それでシークレット検出を補強する。"""
     if shutil.which("gitleaks") is None:
         return []
     with tempfile.TemporaryDirectory() as tmp:
@@ -222,17 +222,17 @@ def scan_line(rel: str, lineno: int, text: str, glossary) -> list[dict]:
 
 
 def main() -> int:
-    ap = argparse.ArgumentParser(description="Detect secrets / PII / org-specific names in pending changes.")
-    ap.add_argument("--repo", default=".", help="Repository path (default: current dir)")
-    ap.add_argument("--glossary", default=None, help="Glossary file (default: <repo>/.scrub-glossary)")
+    ap = argparse.ArgumentParser(description="変更内容からシークレット / PII / 組織固有の名前を検出する。")
+    ap.add_argument("--repo", default=".", help="リポジトリのパス（デフォルト：カレントディレクトリ）")
+    ap.add_argument("--glossary", default=None, help="グロッサリファイル（デフォルト：<repo>/.scrub-glossary）")
     ap.add_argument("--format", choices=["text", "json"], default="text")
-    ap.add_argument("--staged", action="store_true", help="Scan staged changes only")
-    ap.add_argument("--no-untracked", action="store_true", help="Skip untracked files")
+    ap.add_argument("--staged", action="store_true", help="ステージ済みの変更のみスキャン")
+    ap.add_argument("--no-untracked", action="store_true", help="未追跡ファイルをスキップ")
     args = ap.parse_args()
 
     repo = Path(args.repo).resolve()
     if run_git(["rev-parse", "--is-inside-work-tree"], repo) is None:
-        print("error: not a git repository (or git not installed)", file=sys.stderr)
+        print("error: git リポジトリではありません（または git が未インストール）", file=sys.stderr)
         return 2
 
     glossary_path = Path(args.glossary) if args.glossary else repo / ".scrub-glossary"
@@ -248,7 +248,7 @@ def main() -> int:
             text = p.read_text(encoding="utf-8", errors="replace")
         except OSError:
             continue
-        if "\x00" in text[:4096]:  # binary guard
+        if "\x00" in text[:4096]:  # バイナリガード
             continue
         for i, line in enumerate(text.splitlines(), start=1):
             findings.extend(scan_line(rel, i, line, glossary))
@@ -262,25 +262,25 @@ def main() -> int:
                          ensure_ascii=False, indent=2))
         return 1 if findings else 0
 
-    # text report
-    print(f"Scanned {len(files)} changed file(s). "
-          f"gitleaks: {'available' if shutil.which('gitleaks') else 'NOT installed (regex fallback)'}. "
-          f"glossary: {'loaded' if glossary else 'none'} ({glossary_path}).")
+    # テキストレポート
+    print(f"変更ファイル {len(files)} 件をスキャンしました。 "
+          f"gitleaks: {'利用可能' if shutil.which('gitleaks') else '未インストール（正規表現フォールバック）'}。 "
+          f"グロッサリ: {'読み込み済み' if glossary else 'なし'}（{glossary_path}）。")
     if not findings:
-        print("No findings. Safe to proceed.")
+        print("検出なし。コミットに進んで問題ありません。")
         return 0
     counts: dict[str, int] = {}
     for f in findings:
         counts[f["category"]] = counts.get(f["category"], 0) + 1
-    print(f"\n{len(findings)} finding(s): " +
+    print(f"\n検出 {len(findings)} 件: " +
           ", ".join(f"{k}={v}" for k, v in sorted(counts.items())))
     for f in findings:
         repl = f.get("replacement")
-        suffix = f"  -> suggest: {repl}" if repl else ""
+        suffix = f"  -> 置換候補: {repl}" if repl else ""
         print(f"  [{f['category']:6}] {f['file']}:{f['line']}  "
               f"{f['kind']}  «{f['match']}»{suffix}")
-    print("\nReview each finding with a human before applying fixes. "
-          "Real secrets must be ROTATED/REVOKED, not just text-replaced.")
+    print("\n修正を適用する前に各検出を人間と review すること。 "
+          "実在のシークレットはテキスト置換だけでなく、必ずローテーション/失効させること。")
     return 1
 
 
