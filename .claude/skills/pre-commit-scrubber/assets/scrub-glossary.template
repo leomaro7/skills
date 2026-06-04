@@ -1,0 +1,26 @@
+# .scrub-glossary — organization/project-specific terms to scrub before commit.
+#
+# Copy this file to the repository root as `.scrub-glossary`.
+# One term per line. Matching is case-insensitive and literal (not regex).
+#
+# Two forms are supported:
+#   TERM                  -> flagged for review, no suggested replacement
+#   TERM => REPLACEMENT    -> flagged with a suggested replacement string
+#
+# Lines starting with # are comments. Blank lines are ignored.
+#
+# Register here every name that must NOT leak into shared artifacts:
+#   - client / customer names
+#   - internal project / product codenames
+#   - team, department, or org-internal system names
+#   - internal hostnames, repo names, ticket prefixes
+#
+# NOTE: a glossary only catches terms you have registered. Unregistered terms
+# are caught (best-effort) by Claude's LLM review, not by this file. Keep it
+# updated as new names appear.
+
+# --- Examples (delete these and add your own) ---
+Acme Corporation => SampleCompany
+Project Bluebird => ProjectX
+internal-jenkins.acme.local => ci.example.com
+ACME-  => TICKET-
