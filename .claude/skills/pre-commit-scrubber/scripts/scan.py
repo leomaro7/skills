@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """変更内容からシークレット・PII・組織/案件固有の名前を検出する。
 
-検出専用：このスクリプトはファイルを決して編集しない。Claude が修正を適用する前に
-人間が review できるよう、検出結果を報告するだけ。macOS と Windows で動作する
-（標準ライブラリのみ。bash/grep/sed に依存しない）。
+検出専用：このスクリプトはファイルを決して編集しない。
+Claude が修正を適用する前に人間が review できるよう、検出結果を報告するだけ。
+macOS と Windows で動作する（標準ライブラリのみ。bash/grep/sed に依存しない）。
 
 使い方:
     python scan.py [--repo PATH] [--glossary PATH] [--format text|json]
