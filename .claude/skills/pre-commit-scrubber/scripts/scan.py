@@ -7,7 +7,7 @@ macOS と Windows で動作する（標準ライブラリのみ。bash/grep/sed 
 
 使い方:
     python scan.py [--repo PATH] [--glossary PATH] [--format text|json]
-                   [--staged] [--no-untracked]
+                   [--staged] [--no-untracked] [--require-gitleaks]
 
 終了コード:
     0  検出なし
@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import shutil
 import subprocess
@@ -25,7 +26,7 @@ import sys
 import tempfile
 from pathlib import Path
 
-# スキャンしないファイル（バイナリ / vendored / ロックファイルはノイズになりがち）。
+# スキャンしないファイル（バイナリ / 外部取り込み（vendored）/ ロックファイルはノイズになりがち）。
 SKIP_SUFFIXES = {
     ".png", ".jpg", ".jpeg", ".gif", ".bmp", ".ico", ".webp", ".svg",
     ".pdf", ".zip", ".gz", ".tar", ".7z", ".rar", ".jar", ".class",
@@ -34,7 +35,7 @@ SKIP_SUFFIXES = {
 }
 MAX_BYTES = 2_000_000  # 約 2 MB を超えるファイルはスキップ
 
-# 実在のシークレットとしてフラグすべきでない明白なプレースホルダ。
+# 実在のシークレットとして検出すべきでない明白なプレースホルダ。
 PLACEHOLDER_RE = re.compile(
     r"^(?:x+|\*+|\.+|-+|none|null|nil|todo|changeme|example|sample|dummy|test|"
     r"your[_-]?\w+|<[^>]+>|\$\{[^}]+\}|\{\{[^}]+\}\}|%[a-z_]+%|env(?:iron)?\."
@@ -226,13 +227,24 @@ def main() -> int:
     ap.add_argument("--repo", default=".", help="リポジトリのパス（デフォルト：カレントディレクトリ）")
     ap.add_argument("--glossary", default=None, help="グロッサリファイル（デフォルト：<repo>/.scrub-glossary）")
     ap.add_argument("--format", choices=["text", "json"], default="text")
-    ap.add_argument("--staged", action="store_true", help="ステージ済みの変更のみスキャン")
+    ap.add_argument("--staged", action="store_true", help="stage 済みの変更のみスキャン")
     ap.add_argument("--no-untracked", action="store_true", help="未追跡ファイルをスキップ")
+    ap.add_argument("--require-gitleaks", action="store_true",
+                    help="gitleaks が無ければエラー終了する strict モード"
+                         "（env SCRUB_REQUIRE_GITLEAKS=1 でも有効化）")
     args = ap.parse_args()
 
     repo = Path(args.repo).resolve()
     if run_git(["rev-parse", "--is-inside-work-tree"], repo) is None:
         print("error: git リポジトリではありません（または git が未インストール）", file=sys.stderr)
+        return 2
+
+    has_gitleaks = shutil.which("gitleaks") is not None
+    env_require = os.environ.get("SCRUB_REQUIRE_GITLEAKS", "").lower() not in ("", "0", "false", "no")
+    if (args.require_gitleaks or env_require) and not has_gitleaks:
+        print("error: strict モード（--require-gitleaks / SCRUB_REQUIRE_GITLEAKS）が有効ですが "
+              "gitleaks が見つかりません。インストールするか strict を無効化してください"
+              "（references/remediation.md 参照）。", file=sys.stderr)
         return 2
 
     glossary_path = Path(args.glossary) if args.glossary else repo / ".scrub-glossary"
@@ -256,18 +268,28 @@ def main() -> int:
     findings.extend(gitleaks_findings(repo, changed))
     findings.sort(key=lambda f: (f["file"], f["line"], f["category"]))
 
+    warnings: list[str] = []
+    if not has_gitleaks:
+        warnings.append(
+            "gitleaks 未導入のため SECRET 検出はベストエフォートです"
+            "（既知フォーマット中心・エントロピー検出なし）。"
+            "網羅性が必要なら gitleaks を導入して再実行してください。")
+
     if args.format == "json":
         print(json.dumps({"findings": findings, "scanned_files": sorted(changed),
-                          "glossary": str(glossary_path), "gitleaks": shutil.which("gitleaks") is not None},
+                          "glossary": str(glossary_path), "gitleaks": has_gitleaks,
+                          "warnings": warnings},
                          ensure_ascii=False, indent=2))
         return 1 if findings else 0
 
     # テキストレポート
+    for w in warnings:
+        print(f"⚠️  {w}")
     print(f"変更ファイル {len(files)} 件をスキャンしました。 "
-          f"gitleaks: {'利用可能' if shutil.which('gitleaks') else '未インストール（正規表現フォールバック）'}。 "
+          f"gitleaks: {'利用可能' if has_gitleaks else '未インストール（正規表現フォールバック）'}。 "
           f"グロッサリ: {'読み込み済み' if glossary else 'なし'}（{glossary_path}）。")
     if not findings:
-        print("検出なし。コミットに進んで問題ありません。")
+        print("検出なし。commit に進んで問題ありません。")
         return 0
     counts: dict[str, int] = {}
     for f in findings:

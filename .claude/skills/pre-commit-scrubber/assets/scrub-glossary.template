@@ -1,11 +1,11 @@
-# .scrub-glossary — コミット前に scrub する組織/案件固有の語。
+# .scrub-glossary — commit 前に scrub する組織/案件固有の語。
 #
 # このファイルをリポジトリルートに `.scrub-glossary` としてコピーする。
 # 1行に1語。マッチは大文字小文字を区別せず、リテラル（正規表現ではない）。
 #
 # 2つの形式をサポートする：
-#   TERM                  -> review 対象としてフラグ、置換候補なし
-#   TERM => REPLACEMENT    -> 置換候補の文字列付きでフラグ
+#   TERM                  -> review 対象として検出（置換候補なし）
+#   TERM => REPLACEMENT    -> 置換候補の文字列付きで検出
 #
 # # で始まる行はコメント。空行は無視される。
 #
