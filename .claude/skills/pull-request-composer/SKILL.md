@@ -290,6 +290,3 @@ gh pr create --base <base> --title "<title>" --body-file <path>   # Draft なら
 - `references/granularity.md` — 粒度の判断基準。まとめるか分けるかの3チェック、常にまとめる／常に分ける組み合わせ、構造変更と振る舞い変更の分離、判断に迷う具体例。差分の切り分けで迷ったら読む。
 - `references/commit-convention.md` — Conventional Commits の型の選び方、Semantic Versioning を併用する場合の接頭辞、本文とフッターの書き方、例。コミットメッセージと PR タイトルを書くときに読む。
 - `assets/PULL_REQUEST_TEMPLATE.md` — PR テンプレートの雛形。リポジトリにテンプレートが無いときの本文構成として使う。
-
-判断基準の出典は Findy Library（https://lib.findy.co.jp/ja）。より詳しい背景が必要なら
-`curl https://lib.findy.co.jp/ja/development/pull-request.md` のように原典を直接読める。

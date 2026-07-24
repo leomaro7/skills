@@ -88,7 +88,3 @@ BREAKING CHANGE: レスポンスのトップレベルが配列からオブジェ
 
 タイトルは一覧・通知・マージ後の履歴に表示されるため、**本文を開かなくても変更内容を判別できる**
 書き方に統一する。`fix: バグ修正` のような、開かないと分からないタイトルにしない。
-
----
-
-出典: Findy Library https://lib.findy.co.jp/ja/development/pull-request.md

@@ -132,10 +132,3 @@
 粒度を小さくすると PR の本数が増え、CI の実行回数も比例して増える。CI が遅いままだと
 マージまでの待ち時間が積み重なって逆効果になるので、CI が明らかに遅い（10分超）場合は
 その点にも触れてよい。
-
----
-
-出典: Findy Library
-- https://lib.findy.co.jp/ja/development/pull-request.md
-- https://lib.findy.co.jp/ja/development/task-breakdown.md
-- https://lib.findy.co.jp/ja/development/refactoring.md
