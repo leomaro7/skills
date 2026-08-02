@@ -1,2 +1,6 @@
 __pycache__/
 *.pyc
+
+# skill-creator が生成する成果物（配布用バンドルと eval 実行ログ）
+*.skill
+.claude/skills/*-workspace/
