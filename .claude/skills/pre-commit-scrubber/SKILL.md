@@ -86,11 +86,10 @@ git commit -m "<type>: <summary>"
 修正は `stage` 前に行われているため、これで単一のクリーンな `commit` になる。
 
 **`commit` メッセージ規約（Conventional Commits）：** 以下は**単独実行時の既定**で、呼び出し元があるときはそちらの規約が優先する。subject はまず type で始め、続けて簡潔な命令形のサマリを書く：`<type>: <summary>`。
-許可される type：`feat`（新機能/新アーティファクト）、`fix`、`docs`、`refactor`、`chore`、`test`、`build`、`ci`、`perf`、`style`。
-`add:` は**使わない** — `feat:` を使う。
+サマリは短く（~50 文字）命令形に保ち、`add:` は**使わない** — `feat:` を使う。
 例：`feat: add reusable error-handling helper`。
-サマリは短く（~50 文字）命令形に保つ。
-ここで `Co-Authored-By` トレーラーは付けない — 必要なときは環境が自動で付加するため、重複させないこと。
+
+**許可される type とトレーラー（`Co-Authored-By` など）の扱いは、`pull-request-composer` の `references/commit-convention.md` を正典とする。** 型の一覧をここに複製しない — 二重管理すると、どちらのスキル経由でコミットしたかで同じリポジトリの履歴が食い違う。
 
 ## 重要な制約
 
