@@ -1,0 +1,19 @@
+/* theme: mono — 色を使わない。組織のブランド色が決まっていない/使えないときの逃げ場 */
+:root {
+  --bg: #fbfbfa;  --ink: #101010;  --muted: #6b6b6b;
+  --accent: #101010;  --rule: #d6d6d4;  --panel: #ffffff;  --panel-ink: #1a1a1a;
+  --font: "Hiragino Sans", "Yu Gothic UI", "Yu Gothic", "Meiryo", "Noto Sans JP", system-ui, sans-serif;
+  --font-head: var(--font);
+  --mono: "SF Mono", "Cascadia Mono", "Consolas", "Menlo", monospace;
+  --h1: 112px; --h2: 76px; --statement: 92px; --head-weight: 800;
+  --pad-x: 150px; --pad-y: 115px; --tracking: 0.005em;
+  --radius: 0px; --rule-w: 1px; --flag-h: 8px; --dot-radius: 0px;
+  --label-ls: 0.24em; --label-tt: uppercase;
+}
+.slide__label { font-size: 24px; font-weight: 700; }
+.points li::before { width: 16px; height: 4px; transform: translateY(-14px); }
+.slide--statement .statement em {
+  --em-line: rgba(16, 16, 16, 0.6);
+  --em-thickness: 0.1em;
+}
+.step__n { border-bottom-width: 3px; }

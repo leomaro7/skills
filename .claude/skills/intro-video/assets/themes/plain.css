@@ -1,0 +1,16 @@
+/* theme: plain — 無印。どの組織の色でもない既定。迷ったらこれ */
+:root {
+  --bg: #ffffff;  --ink: #16181d;  --muted: #5f6672;
+  --accent: #2f6f9f;  --rule: #dfe3e8;  --panel: #f7f8fa;  --panel-ink: #22262d;
+  --font: "Hiragino Sans", "Yu Gothic UI", "Yu Gothic", "Meiryo", "Noto Sans JP", system-ui, sans-serif;
+  --font-head: var(--font);
+  --mono: "SF Mono", "Cascadia Mono", "Consolas", "Menlo", monospace;
+  --h1: 108px; --h2: 74px; --statement: 88px; --head-weight: 700;
+  --pad-x: 140px; --pad-y: 110px; --tracking: 0.01em;
+  --radius: 14px; --rule-w: 1px; --flag-h: 6px; --dot-radius: 50%;
+  --label-ls: 0.14em; --label-tt: none;
+}
+.slide--statement .statement em {
+  --em-line: rgba(47, 111, 159, 0.55);
+  --em-thickness: 0.12em;
+}

@@ -1,0 +1,18 @@
+/* theme: editorial — 明朝の見出し、紙の地。読み物寄り・落ち着いた社内共有向け */
+:root {
+  --bg: #f7f5f0;  --ink: #1e1c19;  --muted: #6f6960;
+  --accent: #8a6a3f;  --rule: #ddd7cc;  --panel: #fffdf9;  --panel-ink: #2b2823;
+  --font: "Hiragino Sans", "Yu Gothic", "Meiryo", "Noto Sans JP", system-ui, sans-serif;
+  --font-head: "Hiragino Mincho ProN", "Yu Mincho", "YuMincho", "MS Mincho", serif;
+  --mono: "SF Mono", "Cascadia Mono", "Consolas", "Menlo", monospace;
+  --h1: 104px; --h2: 72px; --statement: 86px; --head-weight: 600;
+  --pad-x: 170px; --pad-y: 120px; --tracking: 0.02em;
+  --radius: 4px; --rule-w: 1px; --flag-h: 2px; --dot-radius: 50%;
+  --label-ls: 0.22em; --label-tt: none;
+}
+.slide__label { font-weight: 500; }
+.points li::before { width: 10px; height: 10px; transform: translateY(-10px); }
+.slide--statement .statement em {
+  --em-line: rgba(138, 106, 63, 0.6);
+  --em-thickness: 0.1em;
+}

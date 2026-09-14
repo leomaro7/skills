@@ -1,0 +1,17 @@
+/* theme: vivid — 全面に色。ティザーや熱量の高い告知向け。情報量は少なめに */
+:root {
+  --bg: #16326b;  --ink: #ffffff;  --muted: #b9c8e6;
+  --accent: #ffd34d;  --rule: #33508f;  --panel: #1d3d80;  --panel-ink: #eaf0ff;
+  --font: "Hiragino Sans", "Yu Gothic UI", "Yu Gothic", "Meiryo", "Noto Sans JP", system-ui, sans-serif;
+  --font-head: var(--font);
+  --mono: "SF Mono", "Cascadia Mono", "Consolas", "Menlo", monospace;
+  --h1: 132px; --h2: 92px; --statement: 108px; --head-weight: 800;
+  --pad-x: 150px; --pad-y: 120px; --tracking: 0em;
+  --radius: 20px; --rule-w: 0px; --flag-h: 12px; --dot-radius: 50%;
+  --label-ls: 0.2em; --label-tt: uppercase;
+}
+.slide__label { font-size: 30px; font-weight: 700; }
+.points .t { font-size: 54px; }
+.lead { font-size: 44px; }
+.slide--statement .statement em { color: var(--accent); box-shadow: none; }
+/* 外部画像を取り込むときは --pad-color "#16326b" を渡すこと */
