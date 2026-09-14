@@ -1,18 +1,20 @@
 ---
 name: pre-commit-scrubber
 description: >-
-  `commit` 前に、変更内容へ混入したシークレット/クレデンシャル・PII・組織や案件固有の名前をスキャンし、人間が承認した修正だけを適用してからクリーンに `commit` する。ユーザーが `commit`・チェックイン・GitHub/GitLab への `push` をしようとしているとき（特に複数プロジェクトで共有する再利用アーティファクトのとき）、あるいは「secrets/PII/leak をチェックして」「scrub して」と頼まれたときに使う。`git add` の前に走るのでシークレットが git 履歴に入らない。クロスプラットフォーム（macOS/Windows）対応で、いかなる修正の前にも人間の承認（human-in-the-loop）が必須。
+  `commit` 前に、変更内容へ混入したシークレット/クレデンシャル・PII・組織や案件固有の名前をスキャンし、人間が承認した修正だけを適用してからクリーンに `commit` する。ユーザーが `commit`・チェックインしようとしているとき（特に複数プロジェクトで共有する再利用アーティファクトのとき）、あるいは「secrets/PII/leak をチェックして」「scrub して」と頼まれたときに使う。GitHub/GitLab へ `push` しようとしていて未コミットの変更が残っている場合も、その `commit` の前に使う。`commit` の前に走るのでシークレットが git 履歴に入らない。クロスプラットフォーム（macOS/Windows）対応で、いかなる修正の前にも人間の承認（human-in-the-loop）が必須。
 ---
 
 # Pre-commit Scrubber
 
 共有アーティファクトの `commit` 前に、変更内容へ混入したシークレット/クレデンシャル・PII・組織や案件固有の名前をスキャンし、人間が承認した修正だけを適用してからクリーンに `commit` する。
-フローは **detect → human review → fix → add → commit**（1 `commit`）で、**`git add` の前**に走るため、機微な情報が git 履歴に入ることはない。
+フローは **detect → human review → fix → add → commit**（1 `commit`）で、**`commit` の前**に走るため、機微な情報が git 履歴に入ることはない。
 
 ## 発火タイミング
 
 ユーザーが `commit`/`push` しようとしているとき、または明示的に scrub や secrets/PII/leak のチェックを依頼したときに発火する。
-スキャンは変更を**`stage` する前**に実行する。
+スキャンは**`commit` する前**に実行する（`stage` 済みかどうかは問わない。理由は「重要な制約」を参照）。
+
+**他のワークフローの一部として呼ばれた場合**（`pull-request-composer` のコミット前ゲートなど）は、**ステップ4の `git add` / `git commit` を自分で実行しない。** 検出ゼロの確認、または承認された修正の適用と再スキャンのクリーン確認までを行い、そこで呼び出し元に制御を返す。コミットの分け方とメッセージ規約は呼び出し元の手順に従う。ここで勝手に一括 `add` してコミットすると、呼び出し元が合意済みの分割を壊す。
 
 ## ワークフロー
 
@@ -83,16 +85,16 @@ git commit -m "<type>: <summary>"
 
 修正は `stage` 前に行われているため、これで単一のクリーンな `commit` になる。
 
-**`commit` メッセージ規約（Conventional Commits）：** subject はまず type で始め、続けて簡潔な命令形のサマリを書く：`<type>: <summary>`。
-許可される type：`feat`（新機能/新アーティファクト）、`fix`、`docs`、`refactor`、`chore`、`test`、`build`、`ci`、`perf`、`style`。
-`add:` は**使わない** — `feat:` を使う。
+**`commit` メッセージ規約（Conventional Commits）：** 以下は**単独実行時の既定**で、呼び出し元があるときはそちらの規約が優先する。subject はまず type で始め、続けて簡潔な命令形のサマリを書く：`<type>: <summary>`。
+サマリは短く（~50 文字）命令形に保ち、`add:` は**使わない** — `feat:` を使う。
 例：`feat: add reusable error-handling helper`。
-サマリは短く（~50 文字）命令形に保つ。
-ここで `Co-Authored-By` トレーラーは付けない — 必要なときは環境が自動で付加するため、重複させないこと。
+
+**許可される type とトレーラー（`Co-Authored-By` など）の扱いは、`pull-request-composer` の `references/commit-convention.md` を正典とする。** 型の一覧をここに複製しない — 二重管理すると、どちらのスキル経由でコミットしたかで同じリポジトリの履歴が食い違う。
 
 ## 重要な制約
 
-- **`git add` の前に実行する**。`push` 前ではない — ローカル `commit` の後に修正してもシークレットは履歴に残る。
+- **`commit` の前に実行する（`stage` 済みかどうかは問わない）。** スキャナは既定で `HEAD` との差分を見るため（`scripts/scan.py` の `candidate_files()`）、`git add` 済みの変更も未ステージの変更もまとめて検出できる。守るべき線は `add` ではなく `commit` — ローカル `commit` の後に修正してもシークレットは履歴に残る。`push` 前では遅い。
+  この区別は、論理単位ごとに `git add` を繰り返すワークフロー（`pull-request-composer` の分割コミットなど）と両立させるために必要になる。
 - **いかなる編集の前にも人間の承認が必須。** このスキルは検出は自動で行うが、修正（リダクト）は決して自動で行わない。
 - **実在のシークレットは置換ではなくローテーションが必要。** ユーザーがローテーション完了、または意図的な保留を確認するまで `commit` を進めさせない。
 - **クロスプラットフォーム**：スキャナーは Python（`python3`/`python`）経由で呼ぶ。`grep`/`sed`/bash に依存しない。gitleaks は任意で、自動検出される（未導入時は警告のみ。強制したいときは `--require-gitleaks`）。
