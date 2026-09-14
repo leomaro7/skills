@@ -162,43 +162,71 @@ flowchart LR
 
 ## 相関関係図
 
-全27スキルの `SKILL.md`（と `references/`）を機械的に走査し、実際に他スキルを参照している箇所を抽出した。カテゴリ単位に集約すると、カテゴリ同士が2本以上参照し合っている（＝一方向の単発言及ではない）主要な関係は次の通り。
+全27スキルの `SKILL.md`（と `references/`）を機械的に走査すると60本の参照が見つかるが、単純な言及数は実態を表さない。60本を実際に読んで、次の4種類に分類し直した。
+
+| 分類 | 内容 | 本数 |
+|---|---|---|
+| **A: 必須の実行依存** | 手順の中で参照先の実行が必須ゲートになっている | 1本 |
+| **B: 生産者/消費者関係** | 一方の出力・判断結果が他方の入力としてそのまま使われる | 18本 |
+| D: 正典の引用 | 「詳細は◯◯を見よ、複製しない」という情報源の案内。実行を伴わない | 35本 |
+| E: 境界宣言 | 「これは対象外、◯◯へ」という責務の切り離し | 6本 |
+
+**実際にワークフロー上の繋がりと言えるのは60本中19本（32%）だけ。** 残りは「詳しくはこちらを見て」という案内か、「ここは自分の担当外」という宣言で、実行や成果物の受け渡しを伴わない。
+
+さらに、B（生産者/消費者）19本のうち約半数は、**文章上の参照の向きと実際のデータが流れる向きが逆だった。** 「`decision-records`が`database-selection`を参照する」という書き方でも、実際に流れる情報は「`database-selection`で決定が出たら、その結果を`decision-records`が受け取って記録する」であり、データは逆方向に流れる。以下はデータフローの向きに直した図。
 
 ```mermaid
 flowchart TB
-    C1["① 要件定義・計画"]
-    C2["② 設計"]
-    C3["③ 実装"]
-    C4["④ テスト"]
-    C5["⑤ レビュー・PR"]
-    C6["⑥ リリース"]
-    C7["⑦ 運用"]
-    C8["⑧ 改善"]
-    C9["決定の記録"]
-    C10["AI運用基盤"]
-    OTHER["その他（リポジトリ運用ツール）<br/>連携なし・独立"]
+    RD["requirements-definition"]
+    TSK["task-breakdown"]
+    DBS["database-selection"]
+    MR["modifiability-review"]
+    PO["performance-optimization"]
+    DBP["database-performance"]
+    DM["dependency-management"]
+    E2E["e2e-testing"]
+    CR["code-reviewer"]
+    PRC["pull-request-composer"]
+    PCS["pre-commit-scrubber"]
+    RS["release-strategy"]
+    ND["notification-design"]
+    DBG["debugging"]
+    DR["decision-records"]
+    AP["agent-parallelization"]
+    CE["context-engineering"]
+    TW["test-writer"]
 
-    C10 -- 4本 --> C5
-    C10 -- 2本 --> C1
-    C6 -- 2本 --> C7
-    C5 -- 2本 --> C10
-    C7 -- 2本 --> C4
-    C9 -- 2本 --> C2
-    C8 -- 2本 --> C6
-    C4 -- 2本 --> C6
+    PRC == 必須ゲート ==> PCS
+    PCS -. 制御を返す .-> PRC
+    RD --> AP
+    RD --> CR
+    RD --> E2E
+    RD <--> TSK
+    TSK --> AP
+    TSK --> DM
+    TSK --> PRC
+    CE --> DR
+    DBS --> DR
+    MR --> DR
+    PO --> DR
+    RS --> DR
+    DM --> DR
+    PO --> DBP
+    DBG --> ND
+    DBG --> TW
+
+    classDef sink fill:#fef2f2,stroke:#dc2626,stroke-width:2px
+    class DR sink
 ```
 
-線の本数はそのカテゴリ間で実際に張られている参照の数（重複除く）。これ以外にも単発（1本）の参照はカテゴリ間に多数あるが、図が煩雑になるため省いている——例えば「実装」は「設計・運用・決定の記録・要件定義・計画・テスト」の全てと単発の参照でつながっており、実装フェーズがハブ的な位置にあることが分かる。`その他`（catch-up-claude-code・catch-up-vscode・reflect-on-sessions・intro-video）は、開発サイクルのスキル群とは性質が異なる個人向けツールのため、意図的にどこからも参照されていない。
+この図から見えること：
 
-個々のスキル単位の参照は各 `SKILL.md` を参照。代表的な例：
+- **必須の実行依存はリポジトリ全体で `pull-request-composer` ⇄ `pre-commit-scrubber` の1組だけ。** push前にシークレットスキャンを必ず通すという、唯一のハードな依存関係
+- **`decision-records`（赤枠）は6つのスキルから決定結果を受け取る一方的なシンク（受け皿）。** 「後戻りしにくい決定が出たら記録する」という性質上、自然とそうなる
+- **`requirements-definition` と `task-breakdown` は実データが流れ出す起点。** ここで固めた目的・受入基準・分解結果が、`agent-parallelization`・`code-reviewer`・`e2e-testing`・`pull-request-composer`・`dependency-management` へ流れていく
+- 上記に載っていない残り9スキル（`ci-cd-pipeline-optimizer`・`refactoring`・`subagent-delegation`・`agent-security` など）は、他スキルとの間に**実行依存も成果物の受け渡しもない**——正典の引用や境界宣言でのみ繋がっている
 
-- `requirements-definition` → `task-breakdown` → `pull-request-composer`
-- `pull-request-composer` ⇄ `pre-commit-scrubber`（push前の必須ゲート）
-- `code-reviewer` ⇄ `modifiability-review` / `test-writer`
-- `performance-optimization` ⇄ `database-performance`（ボトルネック特定済みかで住み分け）
-- `release-strategy` ⇄ `ci-cd-pipeline-optimizer` ⇄ `notification-design`
-- `debugging` ⇄ `notification-design`（気づくまでの時間 MTTD／気づいた後の対応 MTTR）
-- `agent-parallelization` ⇄ `subagent-delegation` ⇄ `agent-security`
+個々の参照（引用・境界宣言を含む全60本）は各 `SKILL.md` を参照。
 
 ## スキルの書き方
 
