@@ -1,0 +1,276 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>スライド</title>
+<style>
+  /* ==================================================================
+     構造（全テーマ共通）
+
+     ここには寸法とレイアウトだけを書く。色・書体・装飾は下の THEME ブロック
+     が持つ。色をここに直書きするとテーマを差し替えても変わらなくなるので、
+     必ず var(--...) 経由で参照すること。
+
+     テーマの差し替え:  python scripts/apply_theme.py slides.html --theme dark
+     ================================================================== */
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #333; font-family: var(--font); }
+
+  .slide {
+    width: 1920px; height: 1080px;
+    background: var(--bg); color: var(--ink);
+    padding: var(--pad-y) var(--pad-x);
+    display: flex; flex-direction: column;
+    position: relative; overflow: hidden;
+    margin: 24px auto;      /* プレビュー用。撮影は section 単位なので影響しない */
+    letter-spacing: var(--tracking);
+  }
+  .slide__label {
+    font-size: 26px; font-weight: 600; color: var(--accent);
+    letter-spacing: var(--label-ls); text-transform: var(--label-tt);
+    margin-bottom: 40px;
+  }
+  .slide__num {
+    position: absolute; right: var(--pad-x); bottom: calc(var(--pad-y) - 20px);
+    font-size: 24px; color: var(--muted); font-variant-numeric: tabular-nums;
+  }
+  h1 { font-family: var(--font-head); font-size: var(--h1); font-weight: var(--head-weight);
+       line-height: 1.18; letter-spacing: -0.01em; }
+  h2 { font-family: var(--font-head); font-size: var(--h2); font-weight: var(--head-weight);
+       line-height: 1.25; }
+  .lead { font-size: 40px; color: var(--muted); line-height: 1.65; margin-top: 36px; max-width: 1300px; }
+
+  .slide--title, .slide--closing, .slide--statement { justify-content: center; }
+  .slide--title .lead, .slide--closing .lead { margin-top: 44px; }
+  .slide--title h1::after {
+    content: ""; display: block; width: 160px; height: var(--flag-h);
+    background: var(--accent); margin-top: 52px;
+  }
+
+  .slide--statement .statement {
+    font-family: var(--font-head); font-size: var(--statement);
+    font-weight: var(--head-weight); line-height: 1.4; max-width: 1500px;
+  }
+  .slide--statement .statement em {
+    font-style: normal; color: var(--accent);
+    /* box-shadow/backgroundでの疑似下線は、折り返した行の末尾で影が
+       不可視の余白にまで伸びることがある(改行をまたぐ強調で実測確認)。
+       text-decorationは行ごとの文字範囲に厳密に合わせて描画されるため、
+       改行の有無によらず安全。太さ・色・余白はテーマ側で --em-* 変数として渡す。 */
+    text-decoration-line: underline;
+    text-decoration-color: var(--em-line, var(--accent));
+    text-decoration-thickness: var(--em-thickness, 0.14em);
+    text-underline-offset: var(--em-offset, 0.02em);
+    text-decoration-skip-ink: none;
+  }
+
+  .points { margin-top: 56px; display: flex; flex-direction: column; gap: 44px;
+            flex: 1; justify-content: center; }
+  .points li { list-style: none; display: flex; gap: 32px; align-items: baseline; }
+  .points li::before {
+    content: ""; flex: none; width: 18px; height: 18px; border-radius: var(--dot-radius);
+    background: var(--accent); transform: translateY(-6px);
+  }
+  .points .t { font-size: 46px; font-weight: 600; line-height: 1.45; }
+  .points .d { font-size: 32px; color: var(--muted); line-height: 1.5; margin-top: 10px; }
+
+  .split { margin-top: 56px; display: grid; grid-template-columns: 1fr 1fr; gap: 90px;
+           flex: 1; align-items: center; }
+  .split .body { font-size: 36px; line-height: 1.7; color: var(--muted); }
+  .split .body b { color: var(--ink); font-weight: 600; }
+  .panel {
+    background: var(--panel); border: var(--rule-w) solid var(--rule); border-radius: var(--radius);
+    padding: 44px 48px; font-family: var(--mono); font-size: 28px; line-height: 1.75;
+    white-space: pre-wrap; color: var(--panel-ink); overflow: hidden;
+  }
+  .panel .c { color: var(--muted); }
+  .panel .k { color: var(--accent); }
+
+  .steps { margin-top: 56px; display: grid; grid-auto-flow: column; grid-auto-columns: 1fr;
+           gap: 56px; flex: 1; align-content: center; }
+  .step__n {
+    font-size: 30px; font-weight: 700; color: var(--accent);
+    padding-bottom: 20px; border-bottom: 4px solid var(--accent); display: inline-block;
+    letter-spacing: var(--label-ls);
+  }
+  .step__t { font-size: 40px; font-weight: 600; margin-top: 28px; line-height: 1.4; }
+  .step__d { font-size: 28px; color: var(--muted); margin-top: 16px; line-height: 1.6; }
+
+  /* ------------------------------------------------------------------
+     配置のモディファイア
+
+     テーマ（色・書体）と直交していて、組み合わせて使う。既存のクラスに足すだけ
+     で寄せ・比率・列数が変わるので、レイアウトを新しく起こす前にまずここで
+     足りないか見る。使用例は references/layouts.md にまとめてある。
+     ------------------------------------------------------------------ */
+  .slide--center { align-items: center; text-align: center; }
+  .slide--center .lead { margin-left: auto; margin-right: auto; }
+  .slide--center h1::after { margin-left: auto; margin-right: auto; }
+  .slide--center .points li, .slide--center .card { text-align: left; }
+  /* align-items:center は子を内容幅まで縮める。塊で置く部品は幅を戻す。 */
+  .slide--center .points, .slide--center .split, .slide--center .steps,
+  .slide--center .grid, .slide--center .metrics { width: 100%; }
+  .slide--right { align-items: flex-end; text-align: right; }
+  .slide--right h1::after { margin-left: auto; }
+  .slide--middle { justify-content: center; }
+  .slide--top { justify-content: flex-start; }
+
+  .split--wide   { grid-template-columns: 3fr 2fr; }   /* 説明を厚く */
+  .split--narrow { grid-template-columns: 2fr 3fr; }   /* 実物を大きく */
+  .split--flip > *:first-child { order: 2; }           /* 左右を入れ替える */
+  /* 入れ替えたときも「どちらを大きく見せるか」を保つため、列幅も入れ替える。 */
+  .split--wide.split--flip   { grid-template-columns: 2fr 3fr; }
+  .split--narrow.split--flip { grid-template-columns: 3fr 2fr; }
+
+  .grid { margin-top: 56px; display: grid; gap: 48px; flex: 1; align-content: center;
+          grid-template-columns: repeat(var(--cols, 3), 1fr); }
+  .cols-2 { --cols: 2; }  .cols-3 { --cols: 3; }  .cols-4 { --cols: 4; }
+  .card { background: var(--panel); border: var(--rule-w) solid var(--rule);
+          border-radius: var(--radius); padding: 40px 44px; }
+  .card .t { font-size: 40px; font-weight: 600; line-height: 1.4; }
+  .card .d { font-size: 28px; color: var(--muted); margin-top: 16px; line-height: 1.6; }
+
+  .media { width: 100%; display: block; object-fit: cover;
+           border: var(--rule-w) solid var(--rule); border-radius: var(--radius); }
+  .slide--bleed { padding: 0; justify-content: flex-end; }
+  .slide--bleed .bleed__img { position: absolute; inset: 0; z-index: 0;
+           width: 100%; height: 100%; object-fit: cover; }
+  /* 文字の下は完全に地の色にする。本文ブロックに背景を敷くと、ブロックの高さで
+     グラデーションの効き方が変わって文字に画像が透ける。スライド基準の独立した
+     レイヤーにしておけば、文章量が変わっても読める状態が保たれる。 */
+  .slide--bleed::before {
+           content: ""; position: absolute; left: 0; right: 0; bottom: 0;
+           height: 70%; z-index: 1;
+           background: linear-gradient(transparent, var(--bg) 55%); }
+  .slide--bleed .bleed__body { position: relative; z-index: 2; width: 100%;
+           padding: var(--pad-y) var(--pad-x); }
+
+  .metrics { margin-top: 56px; display: grid; grid-auto-flow: column;
+             grid-auto-columns: 1fr; gap: 64px; flex: 1; align-content: center; }
+  .metric__v { font-family: var(--font-head); font-size: 132px; line-height: 1;
+               font-weight: var(--head-weight); color: var(--accent); letter-spacing: -0.02em; }
+  .metric__l { font-size: 32px; color: var(--muted); margin-top: 20px; line-height: 1.5; }
+
+  /* ------------------------------------------------------------------
+     図
+
+     紹介動画に効くのは写真ではなく「仕組みが分かる図」で、それはコードで描ける。
+     すべてテーマ変数を参照しているので、テーマを差し替えると図の色も追従する。
+     画像ファイルと違って解像度も落ちない。書き方は references/diagrams.md。
+
+     margin: auto 0 は、flex 縦並びの .slide の中で図を上下中央に置くため。
+     ------------------------------------------------------------------ */
+  .flow { margin: auto 0; width: 100%; display: flex; align-items: stretch; }
+  .flow__box { flex: 1; background: var(--panel);
+               border: var(--rule-w) solid var(--rule); border-radius: var(--radius);
+               padding: 36px 32px; display: flex; flex-direction: column; justify-content: center; }
+  .flow__box .t { font-size: 36px; font-weight: 600; line-height: 1.35; }
+  .flow__box .d { font-size: 26px; color: var(--muted); margin-top: 12px; line-height: 1.5; }
+  .flow__box--accent { background: var(--accent); border-color: var(--accent); color: var(--bg); }
+  .flow__box--accent .d { color: var(--bg); opacity: 0.82; }
+  .flow__arrow { flex: none; width: 76px; display: grid; place-items: center;
+                 color: var(--accent); font-size: 40px; }
+
+  .compare { margin: auto 0; width: 100%; display: grid; grid-template-columns: 1fr 1fr; gap: 56px; }
+  .compare__col { border: var(--rule-w) solid var(--rule); border-radius: var(--radius); overflow: hidden; }
+  .compare__h { padding: 22px 32px; font-size: 30px; font-weight: 700;
+                letter-spacing: var(--label-ls); background: var(--panel);
+                border-bottom: var(--rule-w) solid var(--rule); }
+  .compare__col--after .compare__h { background: var(--accent); color: var(--bg); border-color: var(--accent); }
+  .compare__b { padding: 32px; font-size: 30px; line-height: 1.7; color: var(--muted); }
+  .compare__b b { color: var(--ink); font-weight: 600; }
+
+  .bars { margin: auto 0; width: 100%; display: flex; flex-direction: column; gap: 38px; }
+  .bar__l { font-size: 32px; margin-bottom: 14px; display: flex; justify-content: space-between; }
+  .bar__l .v { color: var(--accent); font-weight: 700; font-variant-numeric: tabular-nums; }
+  .bar__t { height: 28px; background: var(--rule); border-radius: 999px; overflow: hidden; }
+  .bar__f { height: 100%; width: var(--w, 50%); background: var(--accent); border-radius: 999px; }
+  .bar--muted .bar__f { background: var(--muted); }
+  .bar--muted .bar__l .v { color: var(--muted); }
+
+  .stack { margin: auto 0; width: 100%; display: flex; flex-direction: column; gap: 14px; }
+  .stack__l { background: var(--panel); border: var(--rule-w) solid var(--rule);
+              border-radius: var(--radius); padding: 26px 36px; font-size: 34px; font-weight: 600; }
+  .stack__l .d { font-size: 26px; color: var(--muted); font-weight: 400; margin-top: 8px; }
+  .stack__l--accent { background: var(--accent); border-color: var(--accent); color: var(--bg); }
+  .stack__l--accent .d { color: var(--bg); opacity: 0.82; }
+
+  /* インライン SVG も同じ扱いにする。stroke/fill に var(--...) を書けばテーマに
+     追従し、書かなければ図だけ色が取り残される。 */
+  .figure { margin: auto 0; width: 100%; }
+  .figure svg { width: 100%; height: auto; display: block; }
+  /* rx は CSS プロパティとしても効く（SVG2）。属性に var() は書けないので、
+     ここで一括指定すると角の丸みもテーマに追従する。個別に変えたい矩形は
+     style="rx: 0" で上書きする。 */
+  .figure svg rect { rx: var(--radius); }
+  .figure__cap { font-size: 26px; color: var(--muted); margin-top: 24px; }
+
+/* === THEME:START === */
+/* theme: plain */
+:root {
+  --bg: #ffffff;  --ink: #16181d;  --muted: #5f6672;
+  --accent: #2f6f9f;  --rule: #dfe3e8;  --panel: #f7f8fa;  --panel-ink: #22262d;
+  --font: "Hiragino Sans", "Yu Gothic UI", "Yu Gothic", "Meiryo", "Noto Sans JP", system-ui, sans-serif;
+  --font-head: var(--font);
+  --mono: "SF Mono", "Cascadia Mono", "Consolas", "Menlo", monospace;
+  --h1: 108px; --h2: 74px; --statement: 88px; --head-weight: 700;
+  --pad-x: 140px; --pad-y: 110px; --tracking: 0.01em;
+  --radius: 14px; --rule-w: 1px; --flag-h: 6px; --dot-radius: 50%;
+  --label-ls: 0.14em; --label-tt: none;
+}
+.slide--statement .statement em { box-shadow: inset 0 -0.14em 0 rgba(47, 111, 159, 0.2); }
+/* === THEME:END === */
+</style>
+
+<!-- =================================================================
+     以下はテンプレート例。実際の内容に置き換えて使う。
+     不要なレイアウトの <section> は丸ごと削除してよい。
+     ================================================================= -->
+
+<section class="slide slide--title" id="01-title">
+  <h1>タイトルをここに<br>2行までに収める</h1>
+  <p class="lead">サブタイトル。この動画で何が分かるかを一文で。</p>
+</section>
+
+<section class="slide" id="02-problem">
+  <div class="slide__label">課題</div>
+  <h2>視聴者が今つまずいていること</h2>
+  <ul class="points">
+    <li><div><div class="t">要点は語で置く</div><div class="d">補足はナレーションで話すので、スライドには書き切らない。</div></div></li>
+    <li><div><div class="t">1枚に3〜4項目まで</div><div class="d">それ以上は読む資料になり、聞けなくなる。</div></div></li>
+    <li><div><div class="t">文末は削る</div><div class="d">「〜します」ではなく体言で止める。</div></div></li>
+  </ul>
+  <div class="slide__num">02</div>
+</section>
+
+<section class="slide slide--statement" id="03-statement">
+  <p class="statement">刺したい一文だけを置く。<br><em>強調</em>は1箇所まで。</p>
+  <div class="slide__num">03</div>
+</section>
+
+<section class="slide" id="04-how">
+  <div class="slide__label">使い方</div>
+  <h2>具体例を見せる</h2>
+  <div class="split">
+    <div class="body">左に説明、右に実物。<br>実物があると、聞き手は「自分の環境で何が起きるか」を想像できる。</div>
+    <div class="panel"><span class="c"># コマンドはそのまま見せる</span>
+<span class="k">$</span> python build_video.py \
+    --slides slides.html \
+    --narration narration.json</div>
+  </div>
+  <div class="slide__num">04</div>
+</section>
+
+<section class="slide" id="05-steps">
+  <div class="slide__label">流れ</div>
+  <h2>3ステップで終わる</h2>
+  <div class="steps">
+    <div><div class="step__n">STEP 1</div><div class="step__t">素材を読む</div><div class="step__d">短い補足。</div></div>
+    <div><div class="step__n">STEP 2</div><div class="step__t">台本を書く</div><div class="step__d">短い補足。</div></div>
+    <div><div class="step__n">STEP 3</div><div class="step__t">組み立てる</div><div class="step__d">短い補足。</div></div>
+  </div>
+  <div class="slide__num">05</div>
+</section>
+
+<section class="slide slide--closing" id="06-closing">
+  <h1>次にやること</h1>
+  <p class="lead">視聴後に踏む一歩を、具体的なパスやコマンドで置く。</p>
+</section>

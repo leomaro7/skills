@@ -1,0 +1,19 @@
+/* theme: corporate — 白地に濃紺。社外向け・フォーマル。角を落とさず罫線で締める */
+:root {
+  --bg: #ffffff;  --ink: #111827;  --muted: #55606f;
+  --accent: #14356b;  --rule: #c9d2de;  --panel: #f4f6f9;  --panel-ink: #1a2333;
+  --font: "Yu Gothic UI", "Yu Gothic", "Hiragino Sans", "Meiryo", "Noto Sans JP", system-ui, sans-serif;
+  --font-head: var(--font);
+  --mono: "Cascadia Mono", "SF Mono", "Consolas", "Menlo", monospace;
+  --h1: 94px; --h2: 66px; --statement: 78px; --head-weight: 700;
+  --pad-x: 130px; --pad-y: 100px; --tracking: 0.015em;
+  --radius: 0px; --rule-w: 2px; --flag-h: 5px; --dot-radius: 0px;
+  --label-ls: 0.2em; --label-tt: uppercase;
+}
+h2 { padding-bottom: 28px; border-bottom: 2px solid var(--rule); }
+.points li::before { width: 14px; height: 14px; transform: translateY(-4px); }
+.lead { font-size: 36px; }
+.slide--statement .statement em {
+  --em-line: rgba(20, 53, 107, 0.55);
+  --em-thickness: 0.12em;
+}

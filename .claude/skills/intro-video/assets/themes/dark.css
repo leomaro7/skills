@@ -1,0 +1,19 @@
+/* theme: dark — 暗い地。デモ動画・エンジニア向け。コードが映える */
+:root {
+  --bg: #15171b;  --ink: #eef1f4;  --muted: #949ba6;
+  --accent: #6ee7a8;  --rule: #2b2f36;  --panel: #1d2026;  --panel-ink: #dfe4ea;
+  --font: "Hiragino Sans", "Yu Gothic UI", "Yu Gothic", "Meiryo", "Noto Sans JP", system-ui, sans-serif;
+  --font-head: var(--font);
+  --mono: "SF Mono", "Cascadia Mono", "Consolas", "Menlo", monospace;
+  --h1: 106px; --h2: 74px; --statement: 88px; --head-weight: 700;
+  --pad-x: 140px; --pad-y: 110px; --tracking: 0.01em;
+  --radius: 12px; --rule-w: 1px; --flag-h: 6px; --dot-radius: 2px;
+  --label-ls: 0.18em; --label-tt: uppercase;
+}
+.slide__label { font-family: var(--mono); font-size: 24px; }
+.step__n { font-family: var(--mono); font-size: 26px; }
+.slide--statement .statement em {
+  --em-line: rgba(110, 231, 168, 0.25);
+  --em-thickness: 0.16em;
+}
+/* 外部画像を取り込むときは --pad-color "#15171b" を渡すこと */
