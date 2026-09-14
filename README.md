@@ -9,35 +9,42 @@ Claude Code の再利用可能なスキル（`.claude/skills/`）を集めたリ
 要件定義から改善までの開発サイクルに沿って分類すると、以下のようになる。フェーズをまたいで使うスキル（エージェント運用・意思決定の記録）は下段に分けている。
 
 ```mermaid
-flowchart LR
+flowchart TB
     subgraph P1["① 要件定義・計画"]
+        direction LR
         RD[requirements-definition]
-        TB[task-breakdown]
+        TSK[task-breakdown]
     end
     subgraph P2["② 設計"]
+        direction LR
         DBS[database-selection]
         MR[modifiability-review]
     end
     subgraph P3["③ 実装"]
+        direction LR
         RF[refactoring]
         PO[performance-optimization]
         DBP[database-performance]
         DM[dependency-management]
     end
     subgraph P4["④ テスト"]
+        direction LR
         TW[test-writer]
         E2E[e2e-testing]
     end
     subgraph P5["⑤ レビュー・PR"]
+        direction LR
         CR[code-reviewer]
         PRC[pull-request-composer]
         PCS[pre-commit-scrubber]
     end
     subgraph P6["⑥ リリース"]
+        direction LR
         CICD[ci-cd-pipeline-optimizer]
         RS[release-strategy]
     end
     subgraph P7["⑦ 運用"]
+        direction LR
         ND[notification-design]
         DBG[debugging]
     end
@@ -52,8 +59,8 @@ flowchart LR
 フェーズをまたいで、サイクル全体を下支えするスキル。
 
 ```mermaid
-flowchart TB
-    Cycle(("要件定義 〜 改善の<br/>サイクル全体"))
+flowchart LR
+    Cycle["要件定義〜改善の全サイクル"]
     DR[decision-records]
     AP[agent-parallelization]
     SD[subagent-delegation]
