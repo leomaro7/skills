@@ -178,15 +178,18 @@ flowchart LR
 
 ```mermaid
 flowchart LR
-    RD[requirements-definition] <--> TSK[task-breakdown]
-    RD --> CR[code-reviewer]
-    RD --> E2E[e2e-testing]
-    RD --> AP[agent-parallelization]
-    TSK --> DM[dependency-management]
-    TSK --> PRC[pull-request-composer]
+    RD[requirements-definition] -- 要件のたたき台 --> TSK[task-breakdown]
+    RD -- 受入基準 --> CR[code-reviewer]
+    RD -- 受入基準 --> E2E[e2e-testing]
+    RD -- 目的・非対象・制約 --> AP[agent-parallelization]
+    TSK -- 並列化できる単位 --> AP
+    TSK -- 分割の判定基準 --> PRC[pull-request-composer]
+    TSK -- 更新は機能と分ける --> DM[dependency-management]
 ```
 
-ここで固めた目的・受入基準・分解結果が、レビューの観点、E2Eで守る動線、PRの粒度、並列実行の単位を決める。上流が曖昧なまま下流のスキルを使っても精度が出ない。
+「上流が大事」という一般論ではなく、**下流のスキルが名前を付けて前提にしている成果物**がここで作られる、という話。`code-reviewer` と `e2e-testing` は「受入基準はすでにある」前提で書かれているし、`agent-parallelization` は `task-breakdown` の3ステップ判定（独立性→完結性→revert影響）を通過したタスクしか並列化の候補にしない。前提が無いまま下流のスキルを呼ぶと、そのスキルは前提を自分で埋めて進んでしまう。
+
+逆流は1本だけある。`task-breakdown` は渡された要件が対象範囲や完了条件を示していなければ、分解を始めずに `requirements-definition` へ戻す。
 
 ### 3. 決定は decision-records に集まる
 
