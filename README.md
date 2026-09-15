@@ -207,9 +207,13 @@ flowchart LR
 
 ### その他の受け渡し
 
-- `performance-optimization` → `database-performance`（ボトルネックがDBと判明したら引き継ぐ）
-- `debugging` → `notification-design`（検知が遅れた原因を通知設計へ反映する）
-- `debugging` → `test-writer`（判明した原因に対する再発防止テストを書く）
+条件が成立したときだけ発生する引き継ぎ。成立しなければ、その後続の作業が起きないだけ。
+
+| 条件 | 引き継ぎ | 渡すもの |
+|---|---|---|
+| 待ちの原因がDBだと特定できた | `performance-optimization` → `database-performance` | 以降の改善作業そのもの |
+| 本番で長時間気づかれなかった | `debugging` → `notification-design` | 検知が遅れた事実（通知の仕組みを見直す） |
+| 原因が判明した | `debugging` → `test-writer` | 調査で使った再現手順（そのままテストにする） |
 
 上のどれにも出てこないスキル（`refactoring`・`ci-cd-pipeline-optimizer`・`subagent-delegation`・`agent-security` など）は、他スキルとの間に成果物の受け渡しが無く、単体で完結して使える。
 
