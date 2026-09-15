@@ -160,73 +160,55 @@ flowchart LR
 | `reflect-on-sessions` | 過去のAIコーディングセッションを横断レビューし、繰り返すパターンを永続メモリへ反映する |
 | `intro-video` | 手元の資料（README・設計ドキュメント等）からナレーション付きの紹介動画を生成する |
 
-## 相関関係図
+## スキル同士のつながり
 
-全27スキルの `SKILL.md`（と `references/`）を機械的に走査すると60本の参照が見つかるが、単純な言及数は実態を表さない。60本を実際に読んで、次の4種類に分類し直した。
+各 `SKILL.md` には他スキルへの参照が計60本あるが、その大半は「詳細は◯◯を見よ」という案内や「ここは対象外」という境界宣言で、実行や成果物の受け渡しを伴わない。**前のスキルの成果がそのまま次のスキルの入力になる**関係だけを抜き出すと、次の3つに集約される。
 
-| 分類 | 内容 | 本数 |
-|---|---|---|
-| **A: 必須の実行依存** | 手順の中で参照先の実行が必須ゲートになっている | 1本 |
-| **B: 生産者/消費者関係** | 一方の出力・判断結果が他方の入力としてそのまま使われる | 18本 |
-| D: 正典の引用 | 「詳細は◯◯を見よ、複製しない」という情報源の案内。実行を伴わない | 35本 |
-| E: 境界宣言 | 「これは対象外、◯◯へ」という責務の切り離し | 6本 |
-
-**実際にワークフロー上の繋がりと言えるのは60本中19本（32%）だけ。** 残りは「詳しくはこちらを見て」という案内か、「ここは自分の担当外」という宣言で、実行や成果物の受け渡しを伴わない。
-
-さらに、B（生産者/消費者）19本のうち約半数は、**文章上の参照の向きと実際のデータが流れる向きが逆だった。** 「`decision-records`が`database-selection`を参照する」という書き方でも、実際に流れる情報は「`database-selection`で決定が出たら、その結果を`decision-records`が受け取って記録する」であり、データは逆方向に流れる。以下はデータフローの向きに直した図。
+### 1. commit前に必ず通すゲート
 
 ```mermaid
-flowchart TB
-    RD["requirements-definition"]
-    TSK["task-breakdown"]
-    DBS["database-selection"]
-    MR["modifiability-review"]
-    PO["performance-optimization"]
-    DBP["database-performance"]
-    DM["dependency-management"]
-    E2E["e2e-testing"]
-    CR["code-reviewer"]
-    PRC["pull-request-composer"]
-    PCS["pre-commit-scrubber"]
-    RS["release-strategy"]
-    ND["notification-design"]
-    DBG["debugging"]
-    DR["decision-records"]
-    AP["agent-parallelization"]
-    CE["context-engineering"]
-    TW["test-writer"]
-
-    PRC == 必須ゲート ==> PCS
-    PCS -. 制御を返す .-> PRC
-    RD --> AP
-    RD --> CR
-    RD --> E2E
-    RD <--> TSK
-    TSK --> AP
-    TSK --> DM
-    TSK --> PRC
-    CE --> DR
-    DBS --> DR
-    MR --> DR
-    PO --> DR
-    RS --> DR
-    DM --> DR
-    PO --> DBP
-    DBG --> ND
-    DBG --> TW
-
-    classDef sink fill:#fef2f2,stroke:#dc2626,stroke-width:2px
-    class DR sink
+flowchart LR
+    PRC[pull-request-composer] == commit前に必ず ==> PCS[pre-commit-scrubber]
+    PCS -. 検出ゼロなら続行 .-> PRC
 ```
 
-この図から見えること：
+リポジトリ全体で、片方の実行が必須になっている依存はこの1組だけ。他は全て「必要なら読む」関係。
 
-- **必須の実行依存はリポジトリ全体で `pull-request-composer` ⇄ `pre-commit-scrubber` の1組だけ。** push前にシークレットスキャンを必ず通すという、唯一のハードな依存関係
-- **`decision-records`（赤枠）は6つのスキルから決定結果を受け取る一方的なシンク（受け皿）。** 「後戻りしにくい決定が出たら記録する」という性質上、自然とそうなる
-- **`requirements-definition` と `task-breakdown` は実データが流れ出す起点。** ここで固めた目的・受入基準・分解結果が、`agent-parallelization`・`code-reviewer`・`e2e-testing`・`pull-request-composer`・`dependency-management` へ流れていく
-- 上記に載っていない残り9スキル（`ci-cd-pipeline-optimizer`・`refactoring`・`subagent-delegation`・`agent-security` など）は、他スキルとの間に**実行依存も成果物の受け渡しもない**——正典の引用や境界宣言でのみ繋がっている
+### 2. 要件定義・タスク分解が起点になる
 
-個々の参照（引用・境界宣言を含む全60本）は各 `SKILL.md` を参照。
+```mermaid
+flowchart LR
+    RD[requirements-definition] <--> TSK[task-breakdown]
+    RD --> CR[code-reviewer]
+    RD --> E2E[e2e-testing]
+    RD --> AP[agent-parallelization]
+    TSK --> DM[dependency-management]
+    TSK --> PRC[pull-request-composer]
+```
+
+ここで固めた目的・受入基準・分解結果が、レビューの観点、E2Eで守る動線、PRの粒度、並列実行の単位を決める。上流が曖昧なまま下流のスキルを使っても精度が出ない。
+
+### 3. 決定は decision-records に集まる
+
+```mermaid
+flowchart LR
+    DBS[database-selection] --> DR[decision-records]
+    MR[modifiability-review] --> DR
+    PO[performance-optimization] --> DR
+    RS[release-strategy] --> DR
+    DM[dependency-management] --> DR
+    CE[context-engineering] --> DR
+```
+
+後戻りしにくい決定を出すスキルは、いずれも結果を `decision-records` へ渡す。逆に `decision-records` から他スキルへ流れるものは無く、受け皿に徹している。
+
+### その他の受け渡し
+
+- `performance-optimization` → `database-performance`（ボトルネックがDBと判明したら引き継ぐ）
+- `debugging` → `notification-design`（検知が遅れた原因を通知設計へ反映する）
+- `debugging` → `test-writer`（判明した原因に対する再発防止テストを書く）
+
+上のどれにも出てこないスキル（`refactoring`・`ci-cd-pipeline-optimizer`・`subagent-delegation`・`agent-security` など）は、他スキルとの間に成果物の受け渡しが無く、単体で完結して使える。
 
 ## スキルの書き方
 
